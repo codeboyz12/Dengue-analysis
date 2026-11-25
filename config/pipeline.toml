@@ -1,0 +1,47 @@
+# ค่าที่อาจเปลี่ยนทั้งหมดอยู่ที่นี่ ไม่ฝังในโค้ด
+# path ที่เป็นแบบสัมพัทธ์ อิงจากโฟลเดอร์โปรเจกต์ (โฟลเดอร์ที่มี config/)
+
+[paths]
+data_dir = "data"
+reports_dir = "reports"
+
+[trends]
+# ไฟล์ต้นทาง: TRENDS.xlsx (สองชีท) หรือ csv ที่รวมสองชีทแล้ว (เช่น trends_merged.csv)
+# ใส่ผ่าน --trends-input แทนได้
+input = "TRENDS.xlsx"
+weekly_sheet = "weekly data"
+province_sheet = "province data"
+
+[weather]
+provider = "openmeteo"
+model = "era5"
+timezone = "Asia/Bangkok"
+# ต้องการ buffer >= 7 x จำนวน lag สูงสุดที่ต้องใช้ (lag 4 ใช้ 28 วัน, lag 5 ใช้ 35 วัน)
+buffer_days = 35
+lags = 4
+# ERA5 ช้ากว่าเวลาจริงประมาณ 5 วัน
+end_lag_days = 6
+request_sleep_s = 1.0
+# ถ้าระบุ จะคัดลอกไฟล์ weather_daily.csv นี้เข้า raw แทนการดึงจาก API
+input = ""
+
+[validation]
+expected_provinces = 77
+# ความคลาดเคลื่อนสูงสุดของอัตราต่อแสนที่ยอมรับได้ (นับเป็นการปัดเศษ)
+# ปรับเทียบกับ trends_weather_merged.csv: อัตราปัดที่ทศนิยม 3 ตำแหน่ง คลาดเคลื่อนสูงสุดจริง 0.0005
+rate_abs_tol = 0.001
+# MRG-05: จำนวนสัปดาห์ที่สุ่มตรวจ lag ต่อจังหวัด
+lag_check_weeks_per_province = 3
+seed = 342
+
+[load]
+# ปลายทางของข้อมูลที่ผ่านตรวจ: duckdb (ไฟล์ฐานข้อมูลเดียว) | file (โฟลเดอร์ validated/<run_id>/)
+sink = "duckdb"
+# ไฟล์ฐานข้อมูล (อิงโฟลเดอร์ data/) ใช้เมื่อ sink = "duckdb"
+db_file = "pipeline.duckdb"
+# รูปแบบไฟล์ใน staging และเมื่อ sink = "file": parquet | csv
+format = "parquet"
+
+[export]
+# contract ของ CSV ที่ส่งออก (path แบบสัมพัทธ์อิงโฟลเดอร์โปรเจกต์)
+contract = "config/contract_v2.toml"

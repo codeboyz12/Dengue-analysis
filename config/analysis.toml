@@ -1,0 +1,99 @@
+# Pre-Analysis Specification — lock ก่อนดูผลบน test set
+# อ่านเอกสารฉบับเต็ม: docs/pre_analysis_spec.md
+# กฎ: ห้ามเปลี่ยนหลัง unblind ยกเว้น epsilon_locked / alpha_locked (กรอกจาก inner CV)
+
+[target]
+name = "D"
+formula = "log1p(R_next) - log1p(R_prev)"
+horizon_weeks = 4
+R_prev_range = "t-3..t"
+R_next_range = "t+1..t+4"
+full_week_only = true        # week_days == 7
+ref_D_nonnull = 35266
+ref_D_and_hist = 32802       # ต้องเท่านี้เสมอ; อัปเดตเมื่อขยาย lag 5-8
+
+[features.M0]
+# ประวัติ + ฤดูกาล + ระดับประเทศ + เขต
+hist = [
+  "hist_lograte_lag0", "hist_lograte_lag1", "hist_lograte_lag2", "hist_lograte_lag3",
+  "hist_logR_prev", "hist_logR_prev2", "hist_growth_prev",
+]
+nat = ["nat_lograte_lag0", "nat_logR_prev", "nat_growth_prev"]
+seas_fourier_k = 3            # seas_sin1..3, seas_cos1..3
+reg = "reg_1..reg_13"         # one-hot 12 เขตสุขภาพ
+neighbors = false             # ไม่มีจังหวัดข้างเคียง (sensitivity analysis เท่านั้น)
+
+[features.M1]
+# M0 + อากาศ lag 0-4 + anomaly
+wx_vars = ["rain", "tmax", "tmin"]
+wx_lags = [0, 1, 2, 3, 4]    # wx_{var}_lag{k}
+wx_anomaly = true             # wxa_{var}_lag{k} คำนวณจาก train ของ fold เท่านั้น
+
+[features.sensitivity]
+# ไม่ใช้ตัดสิน H4 — รายงานเสริม
+wx_lags_extended = [5, 6, 7, 8]   # H3 (ต้องรอขั้น B)
+rain_cumsum_weeks = 12             # ฝนสะสมระยะยาว
+
+[folds]
+test_years_main = [2019, 2022, 2023, 2024, 2025]
+test_years_supplementary = [2020, 2021]
+gap_weeks = 4                 # label_end < test_start
+mode = "expanding_train"
+seed = 342
+
+[model.primary]
+# โมเดลหลักของ H4 — เลือกก่อนดูผล test
+name = "HuberRegressor"
+tuning = "inner_cv_5fold"
+scoring = "neg_mean_absolute_error"
+# grid search
+epsilon_grid = [1.10, 1.35, 1.50]
+alpha_grid = [1.0e-4, 1.0e-3, 1.0e-2]
+# lock หลัง inner CV เสร็จ ก่อน unblind:
+epsilon_locked = 1.35
+alpha_locked = 1.0
+
+[model.sensitivity]
+# โมเดลเสริม — ตรวจความทนทาน ไม่ตัดสิน H4
+names = ["ElasticNetCV", "HistGradientBoostingRegressor", "XGBRegressor", "TabMMini"]
+
+[hypotheses.H1]
+vars = ["rain"]
+lags = [0, 1, 2, 3, 4]
+threshold_abs_rho = 0.10
+min_pass_lags = 2             # ต้องผ่านอย่างน้อย 2 จาก 5 lag (ป้องกัน false positive จาก lag เดียว)
+same_sign_min_folds = 4       # เครื่องหมาย median เดียวกัน ≥ 4/5 fold หลัก
+aggregate = "median_within_province_per_fold"
+covariate = "hist_logR_prev"  # partial Spearman คุมตัวแปรนี้
+
+[hypotheses.H2]
+vars = ["tmax", "tmin"]
+lags = [0, 1, 2, 3, 4]
+threshold_abs_rho = 0.10
+min_pass_lags = 2
+same_sign_min_folds = 4
+aggregate = "median_within_province_per_fold"
+covariate = "hist_logR_prev"
+
+[hypotheses.H3]
+lags = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+contingent_on = "H1_or_H2"   # ถ้า H1 และ H2 ไม่ผ่านทั้งคู่ → H3 = "ตัดสินไม่ได้"
+edge_lags = [0, 8]            # lag ที่ดีที่สุดต้องไม่อยู่ที่ขอบ
+
+[hypotheses.H4]
+threshold_mae_reduction = 0.05   # 5%
+pass_folds_min = 4               # ดีกว่าใน ≥ 4/5 fold หลัก
+ci_no_zero = true
+primary_decision = "bootstrap_week"
+
+[bootstrap]
+method_primary = "block_week"         # บล็อกสัปดาห์ — ตัดสิน H4
+method_secondary = "block_prov_year"  # บล็อกจังหวัดภายในปี — รายงานเปรียบเทียบ
+n_replicates = 1000
+seed = 342
+confidence_level = 0.95
+
+[covid_years]
+year_2020 = "supplementary_fold"
+year_2021 = "supplementary_fold"
+in_train_after = true   # 2020/2021 ยังอยู่ใน train ของ F2-F5 — sensitivity analysis

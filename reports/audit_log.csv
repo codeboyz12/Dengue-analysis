@@ -1,0 +1,61 @@
+run_id,stage,rule_id,severity,outcome,measured,detail,checked_at
+20261109T042803Z,validate-source,SRC-01,BLOCK,pass,"TRENDS: ขาด 0 คอลัมน์, ชนิดผิด 0",,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,SRC-02,BLOCK,pass,"TRENDS ['P-code', 'Year', 'Epi week']: ซ้ำ 0 แถว",,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,SRC-02,BLOCK,pass,"TRENDS ['P-code', 'Week start']: ซ้ำ 0 แถว",,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,SRC-03,BLOCK,pass,TRENDS: 40579 แถว,ยังไม่มีรอบก่อนให้เทียบ,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,TRD-01,BLOCK,pass,"77 จังหวัด (คาด 77), สัปดาห์ต่อจังหวัด [527]",,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,TRD-02,BLOCK,pass,ค่าติดลบ: ไม่มี,,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,TRD-03,BLOCK,pass,แถวที่ผลรวมไม่ตรง 0,,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,TRD-04,BLOCK,skip,-,ไม่มีคอลัมน์ Population (ตาราง weekly sheet ยังไม่รวมกับ province sheet),2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,TRD-05,BLOCK,pass,"week_days นอก 1-7: 0 แถว, สัปดาห์ซ้อนกัน 0 คู่",,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,TRD-06,BLOCK,pass,"สัปดาห์สั้น 13 สัปดาห์, อยู่นอกขอบปี 0",,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,SRC-01,BLOCK,pass,"weather: ขาด 0 คอลัมน์, ชนิดผิด 0",,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,SRC-02,BLOCK,pass,"weather ['P-code', 'date']: ซ้ำ 0 แถว",,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,SRC-03,BLOCK,pass,weather: 283822 แถว,ยังไม่มีรอบก่อนให้เทียบ,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,WX-01,BLOCK,pass,"ฝนติดลบ 0 แถว, t_max<t_min 0 แถว",,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,WX-02,BLOCK,pass,"283822 แถว (คาด 77x3686=283822), 77 จังหวัด, ช่วง 2015-11-29..2025-12-31",จังหวัดที่ช่วงวันไม่ครบ: 0,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,WX-03,BLOCK,pass,ค่าว่าง: ไม่มี,,2026-11-09T04:28:09Z
+20261109T042803Z,validate-source,WX-04,INFO,pass,"{'precip_mm': (0.0, 293.5), 't_max_c': (9.4, 45.6), 't_min_c': (5.5, 33.2)}",ยังไม่ล็อกเกณฑ์ บันทึกช่วงค่าเพื่อใช้ตั้งเกณฑ์,2026-11-09T04:28:09Z
+20261109T042803Z,validate-merged,MRG-01,BLOCK,pass,ซ้ำ 0 แถว; 40579 แถว = 77 จังหวัด x 527 สัปดาห์ (ต้องเท่ากัน),,2026-11-09T04:28:15Z
+20261109T042803Z,validate-merged,MRG-02,BLOCK,pass,ก่อน 40579 -> หลัง 40579,,2026-11-09T04:28:15Z
+20261109T042803Z,validate-merged,MRG-03,BLOCK,pass,แถวที่ weather_days != week_days: 0,,2026-11-09T04:28:15Z
+20261109T042803Z,validate-merged,MRG-04,BLOCK,pass,"คอลัมน์ที่มีค่าว่าง 0, คอลัมน์ที่หาย 0",,2026-11-09T04:28:15Z
+20261109T042803Z,validate-merged,MRG-05,BLOCK,pass,ตรวจ 2772 ค่า ผิด 0,,2026-11-09T04:28:15Z
+20261109T042803Z,validate-merged,MRG-06,BLOCK,pass,"ฝนติดลบ 0 แถว, tmax_mean<tmin_mean 0 แถว",,2026-11-09T04:28:15Z
+20261109T042803Z,validate-merged,MRG-07,BLOCK,pass,"แถว 40579 (weekly sheet 40579), ค่าว่างในคอลัมน์จังหวัด ไม่มี, คอลัมน์ที่หาย ไม่มี",,2026-11-09T04:28:15Z
+export-20261110T064434Z,export,EXP-01,BLOCK,pass,44 คอลัมน์,,2026-11-10T06:44:34Z
+export-20261110T064434Z,export,EXP-02,BLOCK,pass,คอลัมน์ที่มีค่าว่าง 0 คอลัมน์,,2026-11-10T06:44:34Z
+export-20261110T064434Z,export,EXP-03,BLOCK,pass,คีย์ซ้ำ 0 แถว,,2026-11-10T06:44:34Z
+export-20261110T064434Z,export,LKG-02,BLOCK,pass,คอลัมน์ต้องห้าม 0 คอลัมน์,,2026-11-10T06:44:34Z
+export-20261118T054525Z,export,EXP-01,BLOCK,pass,44 คอลัมน์,,2026-11-18T05:45:25Z
+export-20261118T054525Z,export,EXP-02,BLOCK,pass,คอลัมน์ที่มีค่าว่าง 0 คอลัมน์,,2026-11-18T05:45:25Z
+export-20261118T054525Z,export,EXP-03,BLOCK,pass,คีย์ซ้ำ 0 แถว,,2026-11-18T05:45:25Z
+export-20261118T054525Z,export,LKG-02,BLOCK,pass,คอลัมน์ต้องห้าม 0 คอลัมน์,,2026-11-18T05:45:25Z
+20261118T054719Z,validate-source,SRC-01,BLOCK,pass,"TRENDS: ขาด 0 คอลัมน์, ชนิดผิด 0",,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,SRC-02,BLOCK,pass,"TRENDS ['P-code', 'Year', 'Epi week']: ซ้ำ 0 แถว",,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,SRC-02,BLOCK,pass,"TRENDS ['P-code', 'Week start']: ซ้ำ 0 แถว",,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,SRC-03,BLOCK,pass,TRENDS: 40579 แถว (รอบก่อน 40579),,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,TRD-01,BLOCK,pass,"77 จังหวัด (คาด 77), สัปดาห์ต่อจังหวัด [527]",,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,TRD-02,BLOCK,pass,ค่าติดลบ: ไม่มี,,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,TRD-03,BLOCK,pass,แถวที่ผลรวมไม่ตรง 0,,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,TRD-04,BLOCK,skip,-,ไม่มีคอลัมน์ Population (ตาราง weekly sheet ยังไม่รวมกับ province sheet),2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,TRD-05,BLOCK,pass,"week_days นอก 1-7: 0 แถว, สัปดาห์ซ้อนกัน 0 คู่",,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,TRD-06,BLOCK,pass,"สัปดาห์สั้น 13 สัปดาห์, อยู่นอกขอบปี 0",,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,SRC-01,BLOCK,pass,"weather: ขาด 0 คอลัมน์, ชนิดผิด 0",,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,SRC-02,BLOCK,pass,"weather ['P-code', 'date']: ซ้ำ 0 แถว",,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,SRC-03,BLOCK,pass,weather: 283822 แถว (รอบก่อน 283822),,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,WX-01,BLOCK,pass,"ฝนติดลบ 0 แถว, t_max<t_min 0 แถว",,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,WX-02,BLOCK,pass,"283822 แถว (คาด 77x3686=283822), 77 จังหวัด, ช่วง 2015-11-29..2025-12-31",จังหวัดที่ช่วงวันไม่ครบ: 0,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,WX-03,BLOCK,pass,ค่าว่าง: ไม่มี,,2026-11-18T05:47:27Z
+20261118T054719Z,validate-source,WX-04,INFO,pass,"{'precip_mm': (0.0, 293.5), 't_max_c': (9.4, 45.6), 't_min_c': (5.5, 33.2)}",ยังไม่ล็อกเกณฑ์ บันทึกช่วงค่าเพื่อใช้ตั้งเกณฑ์,2026-11-18T05:47:27Z
+20261118T054719Z,validate-merged,MRG-01,BLOCK,pass,ซ้ำ 0 แถว; 40579 แถว = 77 จังหวัด x 527 สัปดาห์ (ต้องเท่ากัน),,2026-11-18T05:47:34Z
+20261118T054719Z,validate-merged,MRG-02,BLOCK,pass,ก่อน 40579 -> หลัง 40579,,2026-11-18T05:47:34Z
+20261118T054719Z,validate-merged,MRG-03,BLOCK,pass,แถวที่ weather_days != week_days: 0,,2026-11-18T05:47:34Z
+20261118T054719Z,validate-merged,MRG-04,BLOCK,pass,"คอลัมน์ที่มีค่าว่าง 0, คอลัมน์ที่หาย 0",,2026-11-18T05:47:34Z
+20261118T054719Z,validate-merged,MRG-05,BLOCK,pass,ตรวจ 2772 ค่า ผิด 0,,2026-11-18T05:47:34Z
+20261118T054719Z,validate-merged,MRG-06,BLOCK,pass,"ฝนติดลบ 0 แถว, tmax_mean<tmin_mean 0 แถว",,2026-11-18T05:47:34Z
+20261118T054719Z,validate-merged,MRG-07,BLOCK,pass,"แถว 40579 (weekly sheet 40579), ค่าว่างในคอลัมน์จังหวัด ไม่มี, คอลัมน์ที่หาย ไม่มี",,2026-11-18T05:47:34Z
+export-20261118T054737Z,export,EXP-01,BLOCK,pass,44 คอลัมน์,,2026-11-18T05:47:37Z
+export-20261118T054737Z,export,EXP-02,BLOCK,pass,คอลัมน์ที่มีค่าว่าง 0 คอลัมน์,,2026-11-18T05:47:37Z
+export-20261118T054737Z,export,EXP-03,BLOCK,pass,คีย์ซ้ำ 0 แถว,,2026-11-18T05:47:37Z
+export-20261118T054737Z,export,LKG-02,BLOCK,pass,คอลัมน์ต้องห้าม 0 คอลัมน์,,2026-11-18T05:47:37Z

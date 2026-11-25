@@ -1,0 +1,37 @@
+# Contract ของไฟล์ที่ส่งออกให้ notebook (เวอร์ชัน 2)
+# v2 = ตารางฐาน 44 คอลัมน์ที่ notebook โหลดได้ทันที (ชื่อและลำดับเหมือน trends_weather_merged.csv)
+#   ไม่มีป้าย D และไม่มีฟีเจอร์ที่คำนวณต่อ: นิยาม D, hist_/wx_/nat_/seas_/reg_ และ anomaly ต่อ fold อยู่ใน notebook ที่เดียว
+# ถ้าเปลี่ยนคอลัมน์หรือชื่อ ให้สร้างไฟล์ contract_v3.toml (ห้ามแก้ v2 ย้อนหลัง)
+# ผลส่งออกไปที่ data/exports/contract_v<version>/<run_id ของข้อมูล>/trends_weather_merged.csv + metadata.json
+
+version = 2
+unit = "province-week"            # 1 แถว = 1 จังหวัด x 1 สัปดาห์ (เก็บแถว week_days < 7 ไว้ notebook กรองเอง)
+keys = ["P-code", "Week start"]   # แถวเรียงตามคีย์นี้ (ตัวแรกต้องเป็น P-code) และต้องไม่ซ้ำ
+
+# คอลัมน์ที่คัดลอกจากตาราง validated ตามลำดับนี้ ต้องไม่มีค่าว่าง
+columns = [
+  "Country", "Year", "Month", "Epi week", "Week start", "Week end", "Health region", "P-code", "Province",
+  "Dengue fever (DF)", "Dengue haemorrhagic fever (DHF)", "Dengue shock syndrome (DSS)", "Dengue total",
+  "Chikungunya", "HFMD",
+  "Dengue rate per 100,000", "Chikungunya rate per 100,000", "HFMD rate per 100,000",
+  "Centroid latitude", "Centroid longitude", "Area (km²)", "Population", "Population density (per km²)",
+  "week_days", "weather_days",
+  "rain_wk_mm", "tmax_mean_c", "tmax_max_c", "tmin_mean_c", "tmin_min_c", "tmean_c", "rain_mean_mm_day",
+  "rain_wk_mm_lag1", "tmax_mean_c_lag1", "tmin_mean_c_lag1",
+  "rain_wk_mm_lag2", "tmax_mean_c_lag2", "tmin_mean_c_lag2",
+  "rain_wk_mm_lag3", "tmax_mean_c_lag3", "tmin_mean_c_lag3",
+  "rain_wk_mm_lag4", "tmax_mean_c_lag4", "tmin_mean_c_lag4",
+]
+
+# LKG-02: ชื่อคอลัมน์ที่เข้ากับรูปแบบเหล่านี้ห้ามอยู่ในไฟล์ส่งออก (ค่าที่คำนวณจากหลายปีต้องทำใหม่ในแต่ละ fold)
+[leakage]
+forbidden_patterns = [
+  '(?i)anomal',
+  '(?i)z[-_ ]?score',
+  '(?i)climatolog',
+  '(?i)(province|prov)[-_ ]?(mean|avg|median|baseline)',
+  '(?i)seasonal[-_ ]?(mean|norm|baseline)',
+  '(?i)threshold',
+  '(?i)percentile',
+  '(?i)outbreak',
+]
