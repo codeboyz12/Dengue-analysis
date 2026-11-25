@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Online Learning — Dengue Forecast</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+  :root{--bg:#F8FAFC;--card:#fff;--border:#E2E8F0;--text:#1E293B;--muted:#64748B;
+        --pass:#16A34A;--fail:#DC2626;--amber:#D97706;--blue:#2563EB;
+        --lr:#2563EB;--ar:#D97706;--trig:#DC2626}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+  .page{max-width:1100px;margin:0 auto;padding:24px 16px}
+  .header{background:linear-gradient(135deg,#1e3a5f,#2563EB);color:#fff;border-radius:12px;padding:24px 28px;margin-bottom:20px}
+  .header h1{font-size:20px;font-weight:700;margin-bottom:6px}
+  .header p{font-size:12px;opacity:.85;line-height:1.6}
+  .section{margin-bottom:20px}
+  .sec-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--border)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+  .card-sm{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  table{width:100%;border-collapse:collapse;font-size:11.5px}
+  th{background:#F1F5F9;padding:5px 8px;text-align:left;font-weight:600;color:var(--muted)}
+  td{padding:5px 8px;border-bottom:1px solid var(--border)}
+  tr:last-child td{border-bottom:none}
+  .badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600}
+  .badge-blue{background:#DBEAFE;color:#1D4ED8}
+  .badge-amber{background:#FEF3C7;color:#B45309}
+  .badge-green{background:#DCFCE7;color:#15803D}
+  .badge-red{background:#FEE2E2;color:#B91C1C}
+  .td-pass{color:var(--pass);font-weight:600}
+  .td-fail{color:var(--fail);font-weight:600}
+  .dot-lr{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--lr);margin-right:4px}
+  .dot-ar{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--ar);margin-right:4px}
+  .loading{color:var(--muted);font-style:italic;padding:20px;text-align:center}
+  .trig-row{background:#FFF7F7}
+  .concept-box{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:14px;margin-bottom:16px;font-size:12px;line-height:1.7}
+  .formula{font-family:'Fira Mono','Courier New',monospace;background:#F1F5F9;padding:8px 12px;border-radius:6px;font-size:11px;line-height:1.8;margin:8px 0}
+  .footer{text-align:center;font-size:10px;color:var(--muted);margin-top:30px;padding-top:12px;border-top:1px solid var(--border)}
+  .run-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .btn-run{background:#2563EB;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn-run:hover{background:#1D4ED8}
+  .btn-run:disabled{background:#94A3B8;cursor:not-allowed}
+  .run-status{font-size:12px;font-weight:600}
+  .run-status.running{color:#D97706}
+  .run-status.done{color:#16A34A}
+  .run-status.error{color:#DC2626}
+  .terminal{background:#0F172A;color:#94A3B8;font-family:'Fira Mono','Courier New',monospace;font-size:11px;line-height:1.6;border-radius:8px;padding:12px 14px;max-height:280px;overflow-y:auto;display:none;white-space:pre-wrap;word-break:break-all}
+  .terminal .t-ok{color:#4ADE80}
+  .terminal .t-warn{color:#FBBF24}
+  .terminal .t-err{color:#F87171}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="header">
+  <h1>Online Learning — Drift Detection & Adaptive Retraining</h1>
+  <p>จำลองการพยากรณ์ไข้เลือดออกแบบ online: เริ่มจากโมเดลที่เทรนบนปี 2016–2018 แล้วทำนายต่อเนื่อง ตรวจ drift ด้วย CUSUM และ retrain อัตโนมัติเมื่อ MAE แย่ลง<br>
+  <strong>โมเดล:</strong> Linear Regression (M0 features, 77 จังหวัด) · ARIMA(1,1,1) ต่อจังหวัด &nbsp;|&nbsp; <strong>Drift:</strong> CUSUM (Page 1954) &nbsp;|&nbsp; <strong>Retrain windows:</strong> 4 / 24 / 56 / 112 สัปดาห์</p>
+</div>
+
+<!-- concept -->
+<div class="section">
+  <div class="sec-title">แนวคิด Online Learning ในบริบทนี้</div>
+  <div class="concept-box">
+    <strong>เป้าหมาย:</strong> ทดสอบว่า "โมเดลที่เทรนครั้งเดียวแล้วทำนายตลอด" เทียบกับ "โมเดลที่ retrain เมื่อ MAE แย่ลง" ให้ผลต่างกันมากแค่ไหน และ retrain ด้วยข้อมูลย้อนหลังกี่สัปดาห์จึงเหมาะสมที่สุด<br><br>
+    <strong>CUSUM (Cumulative Sum Control Chart):</strong>
+    <div class="formula">S_t = max(0,  S_{t-1} + (MAE_t − µ₀ − k))
+
+µ₀ = mean MAE ในช่วง warm-up 12 สัปดาห์แรก
+k  = 0.5 × σ₀   (slack — กรอง noise ปกติ)
+h  = 5.0 × σ₀   (threshold — trigger เมื่อ S_t > h)</div>
+    S_t สะสมเฉพาะค่าบวก → ต้องมีสัญญาณ drift ต่อเนื่องหลายสัปดาห์จึง trigger ไม่ใช่แค่ spike สัปดาห์เดียว
+    <br><br>
+    <strong>Retrain policy:</strong> เมื่อ trigger → เทรน 4 candidate models (4 / 24 / 56 / 112 สัปดาห์ล่าสุด) → eval บน 4 สัปดาห์ก่อน trigger → ถ้า candidate ดีกว่าโมเดลปัจจุบัน → แทนที่ + reset S_t = 0
+  </div>
+</div>
+
+<!-- summary cards -->
+<div class="section">
+  <div class="sec-title">สรุปผล</div>
+  <div id="summary-loading" class="loading">กำลังโหลด online_learning.json…</div>
+  <div id="summary-content" style="display:none">
+    <div class="grid-3" id="summary-cards"></div>
+  </div>
+</div>
+
+<!-- MAE + CUSUM charts — 2 columns -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--border)">
+    <span style="font-size:14px;font-weight:700">MAE &amp; CUSUM ตลอดเวลา</span>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="run-status" id="run-status"></span>
+      <button class="btn-run" id="btn-run" onclick="runScript()">▶ Run Script</button>
+    </div>
+  </div>
+  <div class="terminal" id="terminal" style="margin-bottom:12px"></div>
+  <div class="grid-2">
+
+    <!-- LR column -->
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--lr);margin-bottom:8px">
+          <span class="dot-lr"></span>Linear Regression — MAE
+        </div>
+        <div id="mae-lr-loading" class="loading">รอข้อมูล…</div>
+        <canvas id="chart-mae-lr" height="110" style="display:none"></canvas>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:700;color:var(--lr);margin-bottom:8px">
+          <span class="dot-lr"></span>Linear Regression — CUSUM S_t
+        </div>
+        <canvas id="chart-cusum-lr" height="90" style="display:none"></canvas>
+      </div>
+    </div>
+
+    <!-- ARIMA column -->
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--ar);margin-bottom:8px">
+          <span class="dot-ar"></span>ARIMA per province — MAE
+        </div>
+        <div id="mae-ar-loading" class="loading">รอข้อมูล…</div>
+        <canvas id="chart-mae-ar" height="110" style="display:none"></canvas>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:700;color:var(--ar);margin-bottom:8px">
+          <span class="dot-ar"></span>ARIMA per province — CUSUM S_t
+        </div>
+        <canvas id="chart-cusum-ar" height="90" style="display:none"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- key findings -->
+<div class="section">
+  <div class="sec-title">Key Findings</div>
+  <div class="grid-2">
+    <div class="concept-box" style="margin-bottom:0">
+      <strong>🔵 Linear Regression — retrain ช่วย</strong><br>
+      LR trigger เป็นระยะและสามารถแทนที่โมเดลได้สำเร็จ แสดงว่า pattern ของ D เปลี่ยนไปตามช่วงเวลา
+      และการ retrain ด้วย sliding window ช่วยให้โมเดลตามทันได้
+    </div>
+    <div class="concept-box" style="margin-bottom:0;background:#FFFBEB;border-color:#FDE68A">
+      <strong>🟡 ARIMA — trigger บ่อย แต่แทนที่น้อย</strong><br>
+      ARIMA trigger ถี่กว่า LR มาก แต่โมเดลใหม่แทบไม่ชนะโมเดลเดิม เกิดจากสองสาเหตุ:<br><br>
+      <strong>1) S_t ไม่ reset เมื่อไม่แทนที่</strong> — หลัง trigger แล้วไม่มี window ที่ดีกว่า S_t ยังค้างสูง
+      พอ MAE เกิน µ₀+k อีกนิดเดียวก็ trigger ซ้ำได้ทันที แม้ MAE กำลังลดลงตามธรรมชาติ<br><br>
+      <strong>2) ARIMA เทรนบน 2016–2018 แข็งแกร่งกว่า window สั้น</strong> — candidate ที่ retrain บน
+      4–112 สัปดาห์ช่วง drift มักแย่กว่าโมเดลเดิมที่เห็นข้อมูล 3 ปี<br><br>
+      <em>แนวทางปรับปรุง: partial reset (S_t × 0.5), cooldown period, หรือเพิ่ม H multiplier</em>
+    </div>
+  </div>
+</div>
+
+<!-- trigger log -->
+<div class="section">
+  <div class="sec-title">Training Log — Trigger Events</div>
+  <div class="card" id="trigger-log">
+    <div class="loading">รอข้อมูล…</div>
+  </div>
+</div>
+
+<div class="footer" id="footer">CSS 342 · KMUTT 2569 · Online Learning Experiment</div>
+
+</div><!-- /page -->
+
+<script>
+Chart.register(window['chartjs-plugin-annotation']);
+
+const COLORS = { lr: '#2563EB', ar: '#D97706', trig: '#DC2626', h_line: '#DC262660' };
+const WINDOW_COLORS = {'4w':'#EF4444','24w':'#F59E0B','56w':'#10B981','112w':'#6366F1'};
+
+function loadData() {
+  fetch('/data/online_learning.json')
+    .then(r => r.json())
+    .then(d => render(d))
+    .catch(() => {
+      document.getElementById('summary-loading').textContent =
+        'ไม่พบข้อมูล — กด ▶ Run Script เพื่อรัน simulation';
+    });
+}
+loadData();
+
+let _lrMae = null, _lrCusum = null, _arMae = null, _arCusum = null;
+
+function destroyAll() {
+  [_lrMae, _lrCusum, _arMae, _arCusum].forEach(c => { if (c) c.destroy(); });
+  _lrMae = _lrCusum = _arMae = _arCusum = null;
+}
+
+function makeMaeChart(id, color, label) {
+  document.getElementById(id).style.display = '';
+  return new Chart(document.getElementById(id), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label, data: [], borderColor: color, borderWidth: 1.8, pointRadius: 0, tension: 0.2, fill: false },
+      { label: label + ' (no retrain)', data: [], borderColor: color, borderWidth: 1.2,
+        pointRadius: 0, tension: 0.2, fill: false, borderDash: [5, 4], opacity: 0.5 }
+    ]},
+    options: {
+      animation: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 10, padding: 10, usePointStyle: true, font: { size: 10 } } },
+        tooltip: { mode: 'index', intersect: false },
+        annotation: { annotations: {} }
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 10, font: { size: 10 } }, grid: { color: '#F1F5F9' } },
+        y: { min: 0.1, grid: { color: '#F1F5F9' },
+             title: { display: true, text: 'MAE', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function makeCusumChart(id, color) {
+  document.getElementById(id).style.display = '';
+  return new Chart(document.getElementById(id), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'S_t', data: [], borderColor: color, borderWidth: 1.5, pointRadius: 0, tension: 0.1, fill: false }
+    ]},
+    options: {
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false },
+        annotation: { annotations: {} }
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 10, font: { size: 10 } }, grid: { color: '#F1F5F9' } },
+        y: { min: 0, grid: { color: '#F1F5F9' },
+             title: { display: true, text: 'S_t', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function initLiveCharts() {
+  destroyAll();
+  ['mae-lr-loading','mae-ar-loading'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  _lrMae   = makeMaeChart('chart-mae-lr',   '#2563EB', 'Linear Regression');
+  _arMae   = makeMaeChart('chart-mae-ar',   '#D97706', 'ARIMA per province');
+  _lrCusum = makeCusumChart('chart-cusum-lr', '#2563EB');
+  _arCusum = makeCusumChart('chart-cusum-ar', '#D97706');
+}
+
+let _liveUpdateBatch = [];
+let _liveUpdateTimer = null;
+
+function flushLiveUpdate() {
+  if (!_lrMae || _liveUpdateBatch.length === 0) return;
+  _liveUpdateTimer = null;
+  const batch = _liveUpdateBatch.splice(0);
+
+  batch.forEach(p => {
+    _lrMae.data.labels.push(p.week);
+    _lrMae.data.datasets[0].data.push(p.lr_mae);
+    _lrMae.data.datasets[1].data.push(p.lr_mae_base);
+    _arMae.data.labels.push(p.week);
+    _arMae.data.datasets[0].data.push(p.ar_mae);
+    _arMae.data.datasets[1].data.push(p.ar_mae_base);
+    _lrCusum.data.labels.push(p.week);
+    _lrCusum.data.datasets[0].data.push(p.cusum_lr);
+    _arCusum.data.labels.push(p.week);
+    _arCusum.data.datasets[0].data.push(p.cusum_ar);
+
+    p.triggers.forEach(t => {
+      const key = `trig_${t.week_index}`;
+      const color = '#DC2626';
+      const ann = {
+        type: 'line', xMin: p.wi, xMax: p.wi,
+        borderColor: color + (t.replaced ? 'CC' : '55'),
+        borderWidth: t.replaced ? 2 : 1,
+        borderDash: t.replaced ? [] : [4, 3],
+        label: {
+          display: true,
+          content: (t.replaced ? '✓' : '✗') + ' ' + t.week.slice(5),
+          position: 'start',
+          backgroundColor: t.replaced ? color + 'CC' : '#94A3B8CC',
+          color: '#fff', font: { size: 9 }, padding: { x: 4, y: 2 }
+        }
+      };
+      const target = t.model === 'linreg' ? _lrMae : _arMae;
+      const cusumTarget = t.model === 'linreg' ? _lrCusum : _arCusum;
+      target.options.plugins.annotation.annotations[key] = ann;
+      cusumTarget.options.plugins.annotation.annotations[key] = ann;
+    });
+  });
+
+  _lrMae.update('none');  _arMae.update('none');
+  _lrCusum.update('none'); _arCusum.update('none');
+
+  const last = batch[batch.length - 1];
+  document.getElementById('run-status').textContent =
+    `⏳ ${last.week}  (${last.wi + 1}/${last.n})`;
+}
+
+function pushLiveProgress(p) {
+  _liveUpdateBatch.push(p);
+  if (!_liveUpdateTimer) {
+    _liveUpdateTimer = setTimeout(flushLiveUpdate, 80);  // batch max 80ms
+  }
+}
+
+function runScript() {
+  const btn    = document.getElementById('btn-run');
+  const status = document.getElementById('run-status');
+  const term   = document.getElementById('terminal');
+
+  btn.disabled = true;
+  status.className = 'run-status running';
+  status.textContent = '⏳ กำลังเริ่มต้น…';
+  term.style.display = 'block';
+  term.textContent   = '';
+
+  initLiveCharts();
+
+  document.getElementById('summary-content').style.display = 'none';
+  document.getElementById('summary-loading').style.display = '';
+  document.getElementById('summary-loading').textContent = 'กำลังรัน simulation…';
+  document.getElementById('trigger-log').innerHTML = '<div class="loading">รอข้อมูล…</div>';
+
+  const es = new EventSource('/api/run-online-learning');
+
+  es.onmessage = e => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { msg = e.data; }
+
+    if (msg && typeof msg === 'object' && '__done__' in msg) {
+      es.close();
+      if (_liveUpdateTimer) { clearTimeout(_liveUpdateTimer); flushLiveUpdate(); }
+      btn.disabled = false;
+      if (msg.__done__ === 0) {
+        status.className  = 'run-status done';
+        status.textContent = '✅ เสร็จแล้ว — กำลังโหลดผลสรุป…';
+        setTimeout(() => {
+          fetch('/data/online_learning.json?t=' + Date.now())
+            .then(r => r.json())
+            .then(d => {
+              destroyAll();
+              status.textContent = '✅ เสร็จแล้ว';
+              render(d);
+            })
+            .catch(() => { status.textContent = '✅ เสร็จแล้ว (โหลดสรุปไม่ได้)'; });
+        }, 500);
+      } else {
+        status.className  = 'run-status error';
+        status.textContent = `❌ Script ออกด้วย code ${msg.__done__}`;
+      }
+      return;
+    }
+
+    // handle __progress__ (don't print to terminal)
+    if (msg && typeof msg === 'object' && '__progress__' in msg) {
+      pushLiveProgress(msg.__progress__);
+      return;
+    }
+
+    // regular text line → terminal
+    const line = typeof msg === 'string' ? msg : JSON.stringify(msg);
+    const span = document.createElement('span');
+    if (line.includes('✓') || line.startsWith('✓')) span.className = 't-ok';
+    else if (line.includes('✗') || line.includes('⚠')) span.className = 't-warn';
+    else if (line.includes('🔔')) span.className = 't-warn';
+    span.textContent = line + '\n';
+    term.appendChild(span);
+    term.scrollTop = term.scrollHeight;
+  };
+
+  es.onerror = () => {
+    es.close();
+    btn.disabled = false;
+    status.className  = 'run-status error';
+    status.textContent = '❌ การเชื่อมต่อขาด — ตรวจสอบว่า serve.py กำลังทำงานอยู่';
+  };
+}
+
+function render(d) {
+  document.getElementById('summary-loading').style.display = 'none';
+  document.getElementById('summary-content').style.display = '';
+
+  const cfg   = d.config;
+  const weeks = d.weeks;
+  const nw    = weeks.length;
+  const trigs = d.triggers || [];
+
+  // ── summary cards ──────────────────────────────────────────────────────────
+  const lrMean  = mean(d.lr_mae);
+  const arMean  = mean(d.ar_mae);
+  const nTrigLR = trigs.filter(t => t.model === 'linreg').length;
+  const nTrigAR = trigs.filter(t => t.model === 'arima').length;
+  const nRepLR  = trigs.filter(t => t.model === 'linreg' && t.replaced).length;
+  const nRepAR  = trigs.filter(t => t.model === 'arima'  && t.replaced).length;
+
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="card-sm">
+      <div class="label">Linear Regression</div>
+      <div style="font-size:22px;font-weight:700;color:var(--lr)">${lrMean.toFixed(3)}</div>
+      <div style="font-size:11px;color:var(--muted)">avg MAE ทั้งช่วงทดสอบ</div>
+      <div style="margin-top:8px;font-size:12px">Trigger: <strong>${nTrigLR}</strong> ครั้ง · Replaced: <strong>${nRepLR}</strong> ครั้ง</div>
+    </div>
+    <div class="card-sm">
+      <div class="label">ARIMA per province</div>
+      <div style="font-size:22px;font-weight:700;color:var(--ar)">${arMean.toFixed(3)}</div>
+      <div style="font-size:11px;color:var(--muted)">avg MAE ทั้งช่วงทดสอบ</div>
+      <div style="margin-top:8px;font-size:12px">Trigger: <strong>${nTrigAR}</strong> ครั้ง · Replaced: <strong>${nRepAR}</strong> ครั้ง</div>
+    </div>
+    <div class="card-sm">
+      <div class="label">Config</div>
+      <table>
+        <tr><td>Warmup</td><td>${cfg.warmup_weeks} สัปดาห์</td></tr>
+        <tr><td>CUSUM k</td><td>${cfg.cusum_k_mult} × σ₀</td></tr>
+        <tr><td>CUSUM h</td><td>${cfg.cusum_h_mult} × σ₀</td></tr>
+        <tr><td>Retrain windows</td><td>${cfg.retrain_windows.map(w=>w+'w').join(' / ')}</td></tr>
+        <tr><td>Eval window</td><td>${cfg.eval_window} สัปดาห์</td></tr>
+        <tr><td>จังหวัด</td><td>${cfg.n_provinces}</td></tr>
+        <tr><td>M0 features</td><td>${cfg.n_features_m0}</td></tr>
+      </table>
+    </div>
+  `;
+
+  // ── trigger annotations (vertical lines) ─────────────────────────────────
+  const annotations = {};
+  trigs.forEach((t, i) => {
+    const xi = t.week_index;
+    annotations[`trig_${i}`] = {
+      type: 'line', xMin: xi, xMax: xi,
+      borderColor: COLORS.trig + (t.replaced ? 'CC' : '55'),
+      borderWidth: t.replaced ? 2 : 1,
+      borderDash: t.replaced ? [] : [4, 3],
+      label: {
+        display: true,
+        content: (t.replaced ? '✓' : '✗') + ' ' + t.model.slice(0,2).toUpperCase() + ' ' + t.week.slice(5),
+        position: 'start',
+        backgroundColor: t.replaced ? COLORS.trig + 'CC' : '#94A3B8CC',
+        color: '#fff',
+        font: { size: 9 },
+        padding: { x: 4, y: 2 },
+      }
+    };
+  });
+
+  // ── 4 charts (LR MAE, AR MAE, LR CUSUM, AR CUSUM) ────────────────────────
+  ['mae-lr-loading','mae-ar-loading'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+
+  const lrAnns = {}, arAnns = {};
+  trigs.forEach((t, i) => {
+    const xi = t.week_index;
+    const color = COLORS.trig;
+    const ann = {
+      type: 'line', xMin: xi, xMax: xi,
+      borderColor: color + (t.replaced ? 'CC' : '55'),
+      borderWidth: t.replaced ? 2 : 1,
+      borderDash: t.replaced ? [] : [4, 3],
+      label: {
+        display: true,
+        content: (t.replaced ? '✓' : '✗') + ' ' + t.week.slice(5),
+        position: 'start',
+        backgroundColor: t.replaced ? color + 'CC' : '#94A3B8CC',
+        color: '#fff', font: { size: 9 }, padding: { x: 4, y: 2 }
+      }
+    };
+    if (t.model === 'linreg') lrAnns[`trig_${i}`] = ann;
+    else                       arAnns[`trig_${i}`] = ann;
+  });
+
+  const hLR = findH(d, 'cusum_lr', cfg.warmup_weeks);
+  const hAR = findH(d, 'cusum_ar', cfg.warmup_weeks);
+  if (hLR) lrAnns.h = hLine(hLR, COLORS.lr + '99', 'h');
+  if (hAR) arAnns.h = hLine(hAR, COLORS.ar + '99', 'h');
+
+  function staticMae(id, data, dataBase, label, color, anns) {
+    document.getElementById(id).style.display = '';
+    return new Chart(document.getElementById(id), {
+      type: 'line',
+      data: { labels: weeks, datasets: [
+        { label, data, borderColor: color, borderWidth: 1.8, pointRadius: 0, tension: 0.2, fill: false },
+        { label: label + ' (no retrain)', data: dataBase, borderColor: color, borderWidth: 1.2,
+          pointRadius: 0, tension: 0.2, fill: false, borderDash: [5, 4] }
+      ]},
+      options: {
+        animation: false,
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 10, padding: 10, usePointStyle: true, font: { size: 10 } } },
+          tooltip: { mode: 'index', intersect: false },
+          annotation: { annotations: anns }
+        },
+        scales: {
+          x: { ticks: { maxTicksLimit: 10, font: { size: 10 } }, grid: { color: '#F1F5F9' } },
+          y: { min: 0.1, grid: { color: '#F1F5F9' },
+               title: { display: true, text: 'MAE', font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  function staticCusum(id, data, color, anns) {
+    document.getElementById(id).style.display = '';
+    return new Chart(document.getElementById(id), {
+      type: 'line',
+      data: { labels: weeks, datasets: [
+        { data, borderColor: color, borderWidth: 1.5, pointRadius: 0, tension: 0.1, fill: false }
+      ]},
+      options: {
+        animation: false,
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false },
+                   annotation: { annotations: anns } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 10, font: { size: 10 } }, grid: { color: '#F1F5F9' } },
+          y: { min: 0, grid: { color: '#F1F5F9' },
+               title: { display: true, text: 'S_t', font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  _lrMae   = staticMae('chart-mae-lr', d.lr_mae, d.lr_mae_base||[], 'Linear Regression', COLORS.lr, {...lrAnns});
+  _arMae   = staticMae('chart-mae-ar', d.ar_mae, d.ar_mae_base||[], 'ARIMA per province', COLORS.ar, {...arAnns});
+  _lrCusum = staticCusum('chart-cusum-lr', d.cusum_lr, COLORS.lr, {h: lrAnns.h});
+  _arCusum = staticCusum('chart-cusum-ar', d.cusum_ar, COLORS.ar, {h: arAnns.h});
+
+  // ── trigger log ───────────────────────────────────────────────────────────
+  function trigTable(list) {
+    if (list.length === 0)
+      return '<div style="color:var(--muted);padding:10px 0">ไม่มี trigger</div>';
+    let html = `<table>
+      <tr>
+        <th>#</th><th>สัปดาห์</th><th>S_t</th>
+        <th>MAE ก่อน</th><th>MAE หลัง</th><th>Window ที่ชนะ</th><th>แทนที่?</th>
+        <th>4w eval</th><th>24w eval</th><th>56w eval</th><th>112w eval</th>
+      </tr>`;
+    list.forEach((t, i) => {
+      const wCells = ['4w','24w','56w','112w'].map(wk => {
+        const v = t.windows?.[wk];
+        if (!v) return '<td>—</td>';
+        const mae = v.mae_eval != null ? v.mae_eval.toFixed(3) : '—';
+        const isWinner = t.winner_window === wk;
+        return `<td style="${isWinner ? 'color:var(--pass);font-weight:700' : ''}">${mae}<br>
+                <span style="color:var(--muted);font-size:9px">n=${v.n}</span></td>`;
+      }).join('');
+      html += `
+        <tr class="${t.replaced ? 'trig-row' : ''}">
+          <td>${i+1}</td><td>${t.week}</td>
+          <td>${t.cusum_value}</td>
+          <td>${t.mae_before}</td>
+          <td>${t.replaced ? t.mae_after : '—'}</td>
+          <td>${t.winner_window ? '<span class="badge badge-green">'+t.winner_window+'</span>' : '—'}</td>
+          <td class="${t.replaced?'td-pass':'td-fail'}">${t.replaced?'✅':'✗'}</td>
+          ${wCells}
+        </tr>`;
+    });
+    return html + '</table>';
+  }
+
+  const lrTrigs = trigs.filter(t => t.model === 'linreg');
+  const arTrigs = trigs.filter(t => t.model === 'arima');
+
+  document.getElementById('trigger-log').innerHTML = `
+    <div class="grid-2" style="gap:20px">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--lr);margin-bottom:8px">
+          <span class="dot-lr"></span>Linear Regression — ${lrTrigs.length} trigger(s)
+        </div>
+        ${trigTable(lrTrigs)}
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--ar);margin-bottom:8px">
+          <span class="dot-ar"></span>ARIMA per province — ${arTrigs.length} trigger(s)
+        </div>
+        ${trigTable(arTrigs)}
+      </div>
+    </div>`;
+
+  // ── footer ─────────────────────────────────────────────────────────────────
+  document.getElementById('footer').textContent =
+    `CSS 342 · KMUTT 2569 · ${nw} test-weeks · ${trigs.length} triggers · `+
+    `LR avg MAE=${lrMean.toFixed(3)} · ARIMA avg MAE=${arMean.toFixed(3)}`;
+}
+
+function mean(arr) {
+  const v = arr.filter(x => x != null);
+  return v.reduce((a,b)=>a+b,0)/v.length;
+}
+
+function findH(d, key, warmup) {
+  // After warmup, find the max value that was set as h (approx from data)
+  // We approximate h from CUSUM values: find first big drop (after trigger/reset)
+  const vals = d[key].slice(warmup);
+  return vals.length ? Math.max(...vals) * 0.95 : null;
+}
+
+function hLine(y, color, label) {
+  return {
+    type: 'line', yMin: y, yMax: y,
+    borderColor: color, borderWidth: 1.5, borderDash: [5, 4],
+    label: { display: true, content: label, position: 'end',
+             font: { size: 9 }, backgroundColor: 'transparent', color }
+  };
+}
+</script>
+</body>
+</html>
