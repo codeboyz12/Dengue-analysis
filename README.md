@@ -55,12 +55,17 @@ cd Dengue-analysis
 # 2. Place data files
 mkdir -p input data reports/static
 cp /path/to/TRENDS.xlsx input/
-cp /path/to/weather_daily.csv input/
+# weather_daily.csv is optional — omit --weather-input to auto-fetch from Open-Meteo ERA5
+# (requires internet; ~13 min for 77 provinces × 10 years; resumes on re-run if daily limit hit)
 
 # 3. Build image
 docker compose build
 
-# 4. Run pipeline
+# 4a. Run pipeline — auto-fetch weather from Open-Meteo (recommended)
+docker compose run --rm pipeline run \
+  --trends-input input/TRENDS.xlsx
+
+# 4b. Run pipeline — use existing weather_daily.csv (faster)
 docker compose run --rm pipeline run \
   --trends-input input/TRENDS.xlsx \
   --weather-input input/weather_daily.csv
@@ -88,6 +93,11 @@ pip install -e .
 pip install statsmodels          # for ARIMA
 pip install tabm torch           # for TabM-mini (optional)
 
+# Auto-fetch weather from Open-Meteo ERA5 (omit --weather-input)
+python -m dengue_pipeline run \
+  --trends-input input/TRENDS.xlsx
+
+# Or use an existing weather_daily.csv
 python -m dengue_pipeline run \
   --trends-input input/TRENDS.xlsx \
   --weather-input input/weather_daily.csv
