@@ -1,20 +1,8 @@
 # Dengue × Weather Forecasting Pipeline
 
-A data pipeline and research project for **CSS 342 Data Science and Data Engineering** (KMUTT, 2025).
+A data pipeline and analysis project for **CSS 342 Data Science and Data Engineering** (KMUTT, 2025).
 
-We ask a focused causal question: **do weather variables — rainfall and temperature — improve dengue fever forecasts 4 weeks ahead, across all 77 Thai provinces?**
-
-The project spans the full data-engineering lifecycle:
-
-- **Ingestion** — parse two sheets from the DDC TRENDS report (cases + population); auto-fetch ERA5 weather from Open-Meteo (77 province centroids, 2016–2025, ~283 k daily rows)
-- **Validation** — 21 deterministic checks (source: 7, merged: 14) covering row count, date continuity, null rates, and leak-prevention rules; pipeline halts on any failure
-- **Transform** — merge daily weather onto 7-day epidemiological weeks; compute lagged weather features (lags 0–8 weeks); build growth-rate target D = log1p(R_next) − log1p(R_prev)
-- **Load** — append-only DuckDB with schema versioning (`mart`, `ops`, `core`); full audit log per run
-- **Feature engineering** — 56-feature set across 6 groups (disease history, national trend, Fourier seasonality, health-region dummies, raw weather lags, weather anomalies); computed entirely in SQL
-- **Statistical testing** — 5-fold expanding-window cross-validation (seeds 342); Spearman ρ bootstrap (n = 100); MAE comparison with 95 % CI; models: HuberRegressor, ElasticNet, XGBoost, TabM-mini
-- **Online learning** — real-time simulation of LR + ARIMA(1,1,1) per province with CUSUM drift detection; retrain windows 4/24/56/112 weeks; compare against frozen baseline
-
-**Key finding:** Weather does not reliably improve dengue forecasting — all four hypotheses are rejected. The best model overall is ARIMA(1,1,1) walk-forward per province (pure time series, no weather).
+Investigates whether weather variables (rainfall, temperature) help forecast dengue fever growth by province **4 weeks ahead** across Thailand.
 
 ---
 
@@ -55,102 +43,65 @@ The project spans the full data-engineering lifecycle:
 
 ---
 
-## Quick Start — View the Dashboards
+## Installation
 
-The dashboards (`executive_summary.html`, `online_learning.html`) are pre-built static pages included in the repository. To open them locally you need Python 3.12, the pipeline dependencies, and the two JSON data files produced by the pipeline. Follow the steps below.
-
-### Step 1 — Clone and install
+### Option 1 — Docker (recommended)
 
 ```bash
+# 1. Clone repo
 git clone https://github.com/codeboyz12/Dengue-analysis.git
 cd Dengue-analysis
 
-python3.12 -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-
-pip install -e .
-pip install statsmodels          # required for ARIMA
-```
-
-### Step 2 — Provide input data
-
-The pipeline needs the **TRENDS** Excel file from Thailand's Department of Disease Control. Weather data is fetched automatically from Open-Meteo ERA5.
-
-```bash
-mkdir -p input
+# 2. Place data files
+mkdir -p input data reports/static
 cp /path/to/TRENDS.xlsx input/
-```
+# weather_daily.csv is optional — omit --weather-input to auto-fetch from Open-Meteo ERA5
+# (requires internet; ~13 min for 77 provinces × 10 years; resumes on re-run if daily limit hit)
 
-> `weather_daily.csv` is **optional** — if omitted, the pipeline fetches ERA5 weather from Open-Meteo automatically (~13 min for 77 provinces × 10 years; resumes on re-run if the daily API limit is hit).
-
-### Step 3 — Run the pipeline
-
-```bash
-# Auto-fetch weather (recommended — no extra file needed)
-python -m dengue_pipeline run \
-  --trends-input input/TRENDS.xlsx
-
-# Or supply an existing weather file
-python -m dengue_pipeline run \
-  --trends-input input/TRENDS.xlsx \
-  --weather-input input/weather_daily.csv
-```
-
-Verify the run succeeded:
-
-```bash
-python -m dengue_pipeline status
-```
-
-### Step 4 — Generate dashboard data files
-
-Two scripts populate the JSON files the dashboards read:
-
-```bash
-# Produces reports/static/data.json  (H1–H4 results, MAE table, model comparison)
-python scripts/export_static_data.py
-
-# Produces data/online_learning.json  (LR + ARIMA + CUSUM simulation)
-python scripts/run_online_learning.py
-```
-
-### Step 5 — Start the dev server and open the pages
-
-```bash
-python scripts/serve.py 8000
-```
-
-Then open in your browser:
-
-| URL | Page |
-|---|---|
-| `http://localhost:8000/` | Portfolio landing page |
-| `http://localhost:8000/executive_summary.html` | H1–H4 research results, feature engineering, sensitivity analysis |
-| `http://localhost:8000/online_learning.html` | Online Learning simulation with live "Run Script" button |
-
-> The **Online Learning** page can re-run the simulation in real time — click the **▶ Run Script** button on the page. This streams output via SSE (`/api/run-online-learning`) and updates the chart live. Requires `serve.py` (not plain `http.server`).
-
----
-
-## Docker (alternative)
-
-```bash
-# Build
+# 3. Build image
 docker compose build
 
-# Run pipeline (auto-fetch weather)
+# 4a. Run pipeline — auto-fetch weather from Open-Meteo (recommended)
 docker compose run --rm pipeline run \
   --trends-input input/TRENDS.xlsx
 
-# Export base table (44 columns)
+# 4b. Run pipeline — use existing weather_daily.csv (faster)
+docker compose run --rm pipeline run \
+  --trends-input input/TRENDS.xlsx \
+  --weather-input input/weather_daily.csv
+
+# 5. Check status
+docker compose run --rm pipeline status
+
+# 6. Export base table (44 columns)
 docker compose run --rm pipeline export
 ```
 
-> **Linux:** set UID/GID so files in `data/` are owned by the current user:
+> **Linux:** Export UID/GID first so files in `data/` are owned by the current user:
 > ```bash
 > export UID=$(id -u) GID=$(id -g)
 > docker compose run --rm pipeline run ...
 > ```
+
+### Option 2 — Local (Python 3.12)
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+pip install -e .
+pip install statsmodels          # for ARIMA
+pip install tabm torch           # for TabM-mini (optional)
+
+# Auto-fetch weather from Open-Meteo ERA5 (omit --weather-input)
+python -m dengue_pipeline run \
+  --trends-input input/TRENDS.xlsx
+
+# Or use an existing weather_daily.csv
+python -m dengue_pipeline run \
+  --trends-input input/TRENDS.xlsx \
+  --weather-input input/weather_daily.csv
+```
 
 ---
 
@@ -166,12 +117,27 @@ pytest -q
 
 ---
 
-## Dev Server — API Endpoints
+## Dashboard & Endpoints
 
-| Path | Method | Description |
-|---|---|---|
-| `/data/<filename>` | GET | Serve any file from `data/`, e.g. `online_learning.json` |
-| `/api/run-online-learning` | GET | SSE stream — runs simulation and streams stdout in real-time |
+All dashboards are served from a single dev server:
+
+```bash
+source .venv/bin/activate
+python scripts/serve.py 8000
+```
+
+| URL | Page |
+|---|---|
+| `http://localhost:8000/` | Home |
+| `http://localhost:8000/executive_summary.html` | Full H1–H4 research results |
+| `http://localhost:8000/online_learning.html` | Online Learning Experiment |
+
+### API Endpoints
+
+| Path | Description |
+|---|---|
+| `GET /data/<filename>` | Serve files from `data/`, e.g. `online_learning.json` |
+| `GET /api/run-online-learning` | SSE stream — runs simulation and streams stdout in real-time |
 
 ---
 
